@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    env_file: .env
+    environment:
+      - DB_PATH=/app/var/data/app.db
+      - DATA_DIR=/app/var/data
+    volumes:
+      - ./backend:/app
+      - ./var/data:/app/var/data
+    ports:
+      - "8000:8000"
+
+  ui:
+    build:
+      context: .
+      dockerfile: ui/Dockerfile
+    env_file: .env
+    environment:
+      - VITE_API_BASE=${VITE_API_BASE:-http://localhost:8000}
+    volumes:
+      - ./ui:/app
+      - /app/node_modules
+    ports:
+      - "5173:5173"
+    depends_on:
+      - backend
+
