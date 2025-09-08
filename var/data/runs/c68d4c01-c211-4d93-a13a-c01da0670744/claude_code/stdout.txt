@@ -1,0 +1,12 @@
+# Demo: claude_code proposals for: アイデアを5つ
+
+1. Lightweight CLI orchestrator with YAML presets
+2. Repo-aware code change suggester (semantic diffs)
+3. Test-first refactor assistant
+4. Spec-to-stub generator
+5. Inline doc improver
+
+```python
+def suggest():
+    return ['cli', 'semantic-diff', 'tdd']
+```

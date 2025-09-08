@@ -57,10 +57,10 @@
 1. ノード出力の逐次ストリーミング
    - Backend: subprocessのSTDOUT/STDERRを行バッファで逐次SSE送信（`event: log` with node context）
    - UI: ノードパネルのライブログ表示（折りたたみ/検索）
-2. ベスト選択の保存と履歴
+2. ベスト選択の保存と履歴（現状はベスト自動選定のみ。保存UIを追加）
    - UI: 「採用」ボタン→Runにbest_ofフィールド保存、一覧でフィルタ/バッジ表示
    - Backend/DB: runsに`best_tool`/`best_artifact`等を追加
-3. 簡易評価メトリクス
+3. 簡易評価メトリクス（現状のヒューリスティックを拡張）
    - 文字数/固有語彙数/キーワード包含率/重複率などの軽量指標を算出しUI表示
    - MVP後にモデル採点やルーブリックへ拡張
 4. CLIテンプレ/プロファイル
@@ -81,4 +81,3 @@
 ---
 - 参照: `docs/10_prd.md`, `docs/40_mvp.md`, `docs/70_demo_playbook.md`
 - 競合対比: Difyに対し「CLI横断・並列比較・透明なI/O/コスト可視化」を強調
-

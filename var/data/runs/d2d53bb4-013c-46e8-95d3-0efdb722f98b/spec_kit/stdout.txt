@@ -1,0 +1,7 @@
+# Demo: spec_kit proposals for: アイデアを5つ
+
+spec: feature/demo
+acceptance:
+  - show graph
+  - diff outputs
+  - select best

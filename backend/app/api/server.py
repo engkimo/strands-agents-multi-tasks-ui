@@ -13,7 +13,7 @@ import json
 from ..models import Run, RunCreate, RunStatus, ToolName
 from ..agents.graph import run_best_of_n, iter_best_of_n
 from ..storage.sqlite import DB
-from ..storage.files import ensure_base_dir, pr_dir, write_text
+from ..storage.files import ensure_base_dir, pr_dir, write_text, node_dir, read_text_or_none
 from ..eval.simple import evaluate_text
 from pydantic import BaseModel
 
@@ -139,7 +139,8 @@ async def package_pr(run_id: str, req: PackageRequest):
     res = next((r for r in run.results if r.tool == tool), None)
     if not res:
         raise HTTPException(status_code=400, detail="selected tool result not found")
-    content = res.stdout or ""
+    # 最終的な出力はファイルを優先（DBに内容未格納でも復元可能）
+    content = res.stdout or read_text_or_none(str(node_dir(run_id, tool.value) / "stdout.txt")) or ""
     metrics = evaluate_text(content)
     title = req.title or f"Proposal from {tool.value}"
     # Build files

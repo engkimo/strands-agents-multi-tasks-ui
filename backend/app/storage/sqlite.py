@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, Dict, List, Optional
 
 from ..models import Run, RunStatus, ToolName, NodeResult
-from .files import ensure_base_dir, write_artifacts, read_text_or_none
+from .files import ensure_base_dir, write_artifacts, read_text_or_none, node_dir
 
 
 class DB:
@@ -111,12 +111,15 @@ class DB:
             nodes_rows = cur.execute("SELECT * FROM nodes WHERE run_id=?", (run_id,)).fetchall()
         results: List[NodeResult] = []
         for nr in nodes_rows:
+            # パスが欠損/不整合でも既定パスから復元を試みる
+            stdout_p = nr["stdout_path"] or str(node_dir(run_id, nr["tool"]) / "stdout.txt")
+            stderr_p = nr["stderr_path"] or str(node_dir(run_id, nr["tool"]) / "stderr.txt")
             results.append(
                 NodeResult(
                     tool=ToolName(nr["tool"]),
                     ok=bool(nr["ok"]),
-                    stdout=read_text_or_none(nr["stdout_path"]),
-                    stderr=read_text_or_none(nr["stderr_path"]),
+                    stdout=read_text_or_none(stdout_p),
+                    stderr=read_text_or_none(stderr_p),
                     exit_code=nr["exit_code"],
                     duration_ms=nr["duration_ms"],
                     score=nr["score"],

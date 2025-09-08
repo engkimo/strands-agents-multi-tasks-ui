@@ -1,0 +1,13 @@
+# Demo: gemini_cli proposals for: アイデアを5つ
+
+Ideas:
+- Multi-agent brainstorm canvas
+- Prompt library with ratings
+- Cost/latency dashboard
+
+```markdown
+## Checklist
+- [ ] UI
+- [ ] API
+- [ ] Eval
+```
