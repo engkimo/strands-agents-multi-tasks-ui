@@ -16,6 +16,7 @@ from ..storage.sqlite import DB
 from ..storage.files import ensure_base_dir, pr_dir, write_text, node_dir, read_text_or_none
 from ..eval.simple import evaluate_text
 from pydantic import BaseModel
+from ..config.loader import load_tools_config, recommend_tools as _recommend_tools
 
 
 app = FastAPI(title="Strands Agents Multi-Tasks Backend", version="0.1.0")
@@ -32,6 +33,8 @@ app.add_middleware(
 async def _startup():
     ensure_base_dir()
     app.state.db = DB()
+    app.state.tools_cfg = load_tools_config()
+    app.state.log_queues: Dict[str, asyncio.Queue] = {}
 
 
 @app.get("/health")
@@ -49,10 +52,18 @@ async def create_run(req: RunCreate):
     db.create_run(run_id, req.prompt, req.tools, RunStatus.pending, created_at, req.timeout_seconds)
     run = db.get_run(run_id)
 
+    # ensure a log queue for this run
+    app.state.log_queues[run_id] = asyncio.Queue()
+
     async def _worker():
         db.update_run_status(run_id, RunStatus.running)
         try:
-            async for res in iter_best_of_n(req.prompt, req.tools, timeout_seconds=(req.timeout_seconds or 120)):
+            async for res in iter_best_of_n(
+                req.prompt,
+                req.tools,
+                timeout_seconds=(req.timeout_seconds or 120),
+                on_log=_make_log_cb(run_id),
+            ):
                 # 簡易評価
                 metrics = evaluate_text(res.stdout)
                 res.score = metrics.get("score", 0.0)
@@ -106,6 +117,16 @@ async def stream_run(run_id: str):
                 last_count = cur_count
                 payload = json.dumps(run.model_dump(mode="json"))
                 yield f"event: node\ndata: {payload}\n\n"
+            # log drain
+            q = app.state.log_queues.get(run_id)
+            if q is not None:
+                while True:
+                    try:
+                        item = q.get_nowait()
+                    except asyncio.QueueEmpty:
+                        break
+                    else:
+                        yield f"event: log\ndata: {json.dumps(item)}\n\n"
             if run.status in (RunStatus.completed, RunStatus.failed):
                 break
             await asyncio.sleep(0.5)
@@ -164,8 +185,25 @@ async def package_pr(run_id: str, req: PackageRequest):
         + ("- Provide code blocks for clarity.\n" if metrics.get("code_blocks", 0) == 0 else "")
     )
 
+    # Safe summary_md (triple-quoted; avoids concatenation artifacts)
+    summary_md2 = f"""# {title}
+
+- Tool: `{tool.value}`
+- Score: {res.score if res.score is not None else metrics.get('score', 0)}
+- Run: `{run_id}`
+- Prompt: `{run.prompt[:200]}`
+
+## Proposal
+
+{content}
+
+## Heuristics
+
+- lines: {metrics.get('lines')}  chars: {metrics.get('chars')}  code_blocks: {metrics.get('code_blocks')}  diff_hunks: {metrics.get('diff_hunks')}  tests: {metrics.get('tests')}
+"""
+
     out = pr_dir(run_id)
-    summary_path = write_text(out / "summary.md", summary_md)
+    summary_path = write_text(out / "summary.md", summary_md2)
     review_path = write_text(out / "review.md", review_md)
     patch_path = None
     if patch_text:
@@ -182,9 +220,38 @@ async def package_pr(run_id: str, req: PackageRequest):
                 "patch": patch_path,
             },
             "content": {
-                "summary_md": summary_md,
+                "summary_md": summary_md2,
                 "review_md": review_md,
                 "patch_text": patch_text or None,
             },
         }
     )
+
+
+def _make_log_cb(run_id: str):
+    async def _cb(tool: ToolName, kind: str, text: str):
+        q: asyncio.Queue = app.state.log_queues.setdefault(run_id, asyncio.Queue())
+        await q.put({"run_id": run_id, "tool": tool.value, "kind": kind, "text": text})
+    return _cb
+
+
+class RecommendRequest(BaseModel):
+    prompt: str
+
+
+@app.post("/recommend")
+async def post_recommend(req: RecommendRequest):
+    cfg = app.state.tools_cfg
+    names, selector = _recommend_tools(req.prompt, cfg)
+    valid = []
+    for n in names:
+        try:
+            valid.append(ToolName(n))
+        except Exception:
+            continue
+    return {"tools": [v.value for v in valid], "selector": selector}
+
+
+@app.get("/config/tools")
+async def get_tools_config():
+    return app.state.tools_cfg

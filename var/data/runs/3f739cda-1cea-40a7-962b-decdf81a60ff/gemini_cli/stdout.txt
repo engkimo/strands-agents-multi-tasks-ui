@@ -1,0 +1,13 @@
+# Demo: gemini_cli proposals for: 副業向けの新しい開発者ツールのアイデアを5つ
+
+Ideas:
+- Multi-agent brainstorm canvas
+- Prompt library with ratings
+- Cost/latency dashboard
+
+```markdown
+## Checklist
+- [ ] UI
+- [ ] API
+- [ ] Eval
+```

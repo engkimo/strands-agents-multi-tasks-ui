@@ -9,11 +9,15 @@
   - 実CLI呼び出し: 非同期subprocess（STDIN可/タイムアウト/exit_code/STDOUT/STDERR収集、改行正規化）
   - 永続化: SQLite（`var/data/app.db`）+ ファイル保存（`var/data/runs/<run_id>/<tool>/stdout.txt|stderr.txt`）
   - CORS許可、SSEでJSONイベント配信
+  - PRパッケージ: `POST /runs/{id}/package_pr`（summary/review/patch 生成）
+  - スーパーバイザー: `POST /recommend`（tools.yml に基づく推奨ツール選択）、`GET /config/tools`
 - UI（Vite + React）
   - Runs一覧/Run詳細（SSE購読）
   - 簡易グラフビュー（fan-out/fan-in、ノード状態: pending/running/success/error）
   - 差分ビュー（N出力→任意2選択、行/単語粒度、空白/大小無視、Markdown表示、コピー）
   - リトライUI（全ツール/失敗のみ/単一ツール再実行）
+  - デモ強化: 「デモ実行（3ツール一括）」ボタン、簡易チュートリアル表示
+  - 推奨選択: 「推奨ツール選択」ボタンで `/recommend` の結果を反映
 - DevOps
   - `.env.example`、Docker（dev）: `docker-compose.dev.yml` で backend/ui 起動
   - 起動: Backend=`uvicorn`（ホットリロード）、UI=`vite`（0.0.0.0 公開）
@@ -54,9 +58,9 @@
 - Windowsのパス/PTY差異検証
 
 ## 次アクション（優先順）
-1. ノード出力の逐次ストリーミング
-   - Backend: subprocessのSTDOUT/STDERRを行バッファで逐次SSE送信（`event: log` with node context）
-   - UI: ノードパネルのライブログ表示（折りたたみ/検索）
+1. ノード出力の逐次ストリーミング（実装済み・最初版）
+   - Backend: `event: log` を追加、ランIDごとのキューでノードの行ログを配信
+   - UI: Run詳細でライブログを受信し、React Flowのノードホバー時に下部パネルへ表示
 2. ベスト選択の保存と履歴（現状はベスト自動選定のみ。保存UIを追加）
    - UI: 「採用」ボタン→Runにbest_ofフィールド保存、一覧でフィルタ/バッジ表示
    - Backend/DB: runsに`best_tool`/`best_artifact`等を追加

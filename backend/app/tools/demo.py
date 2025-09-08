@@ -5,9 +5,13 @@ import random
 from ..models import ToolName, NodeResult
 
 
-async def simulate_tool(tool: ToolName, prompt: str) -> NodeResult:
+async def simulate_tool(tool: ToolName, prompt: str, on_log: callable | None = None) -> NodeResult:
     # バラつきを持たせて逐次完了させる
-    await asyncio.sleep(0.15 + random.random() * 0.6)
+    # stream a few lines as logs
+    for i in range(3):
+        await asyncio.sleep(0.05 + random.random() * 0.15)
+        if on_log is not None:
+            await on_log("stdout", f"{tool.value}: processing chunk {i+1}\n")
     title = f"Demo: {tool.value} proposals for: {prompt.strip()}"
     body = ""
     if tool == ToolName.claude_code:
@@ -52,4 +56,3 @@ async def simulate_tool(tool: ToolName, prompt: str) -> NodeResult:
     if "+++" in body or "---" in body:
         score += 0.8
     return NodeResult(tool=tool, ok=True, stdout=body, stderr=None, exit_code=0, duration_ms=int(100 + random.random() * 400), score=round(score, 3))
-

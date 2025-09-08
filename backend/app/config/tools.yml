@@ -1,0 +1,25 @@
+tools:
+  claude_code:
+    env_keys: [ANTHROPIC_API_KEY]
+    stdin: true
+  codex_cli:
+    env_keys: [OPENAI_API_KEY]
+    stdin: true
+  gemini_cli:
+    env_keys: [GEMINI_API_KEY, GOOGLE_API_KEY]
+    stdin: true
+
+selectors:
+  - name: code_refactor
+    keywords: ["refactor", "リファクタ", "テスト", "差分", "diff"]
+    recommend: ["claude_code", "codex_cli"]
+  - name: ideation
+    keywords: ["アイデア", "ブレスト", "発想", "提案", "ideas"]
+    recommend: ["claude_code", "gemini_cli"]
+  - name: spec_design
+    keywords: ["仕様", "設計", "要件", "spec", "design"]
+    recommend: ["claude_code", "gemini_cli"]
+
+default:
+  recommend: ["claude_code", "codex_cli", "gemini_cli"]
+

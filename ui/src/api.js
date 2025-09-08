@@ -51,6 +51,12 @@ export function streamRun(id, onEvent) {
       onEvent({ type: 'node', data })
     } catch {}
   })
+  es.addEventListener('log', (e) => {
+    try {
+      const data = JSON.parse(e.data)
+      onEvent({ type: 'log', data })
+    } catch {}
+  })
   return es
 }
 
@@ -58,7 +64,6 @@ export const TOOL_OPTIONS = [
   'claude_code',
   'codex_cli',
   'gemini_cli',
-  'spec_kit',
 ]
 
 export async function packagePR(id, { tool, title } = {}) {
@@ -68,5 +73,15 @@ export async function packagePR(id, { tool, title } = {}) {
     body: JSON.stringify({ tool, title }),
   })
   if (!res.ok) throw new Error('failed to package PR')
+  return await res.json()
+}
+
+export async function recommendTools(prompt) {
+  const res = await fetch(`${API_BASE}/recommend`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ prompt }),
+  })
+  if (!res.ok) throw new Error('failed to recommend tools')
   return await res.json()
 }

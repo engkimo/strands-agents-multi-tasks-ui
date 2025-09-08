@@ -1,7 +1,7 @@
 Strands Agents Multi‑Tasks UI
 =============================
 
-LLM系CLI（Claude Code / Codex CLI / Gemini CLI / Spec Kit）を並列実行し、入出力・差分・評価をUIで比較するローカルツールです。デモモードで最短デモが可能。
+LLM系CLI（Claude Code / Codex CLI / Gemini CLI）を並列実行し、入出力・差分・評価をUIで比較するローカルツールです。デモモードで最短デモが可能（Spec Kit は現時点ワークフローから除外）。
 
 Quick Start（Docker）
 ---------------------
@@ -11,7 +11,7 @@ Quick Start（Docker）
 
 使い方（UI）
 ------------
-- 新規実行: プロンプト入力 → ツール（2〜4）選択 → 実行
+- 新規実行: プロンプト入力 → ツール（2〜3）選択 → 実行
 - Run詳細: グラフ（状態/時間/score）→ 結果（stdout/stderr）→ 差分（行/単語・空白/大小無視・Markdown）→ ベスト表示
 - PRパッケージ: 「PRパッケージ作成（左を採用）」で summary/review/patch をローカル保存＆プレビュー
 
@@ -27,7 +27,7 @@ Quick Start（Docker）
 
 APIワンライナー（fish）
 ------------------------
-- Run作成→ID表示: `set -l RUN_ID (curl -s -X POST http://localhost:8000/runs -H 'Content-Type: application/json' -d '{\"prompt\":\"アイデアを5つ\",\"tools\":[\"claude_code\",\"codex_cli\",\"gemini_cli\",\"spec_kit\"]}' | jq -r .id); echo $RUN_ID`
+- Run作成→ID表示: `set -l RUN_ID (curl -s -X POST http://localhost:8000/runs -H 'Content-Type: application/json' -d '{\"prompt\":\"アイデアを5つ\",\"tools\":[\"claude_code\",\"codex_cli\",\"gemini_cli\"]}' | jq -r .id); echo $RUN_ID`
 - 進捗SSE: `curl -N http://localhost:8000/stream/runs/$RUN_ID`
 - 詳細: `curl -s http://localhost:8000/runs/$RUN_ID | jq .`
 - PRパッケージ: `curl -s -X POST http://localhost:8000/runs/$RUN_ID/package_pr -H 'Content-Type: application/json' -d '{\"tool\":\"claude_code\",\"title\":\"Demo PR\"}' | jq .`
@@ -49,3 +49,15 @@ APIワンライナー（fish）
 Docs
 ----
 - `docs/70_demo_playbook.md`, `docs/75_demo_run.md`, `docs/80_progress_next.md`, `docs/85_pr_coderabbit.md`
+-
+環境変数（.env）の考え方
+-------------------------
+- 最小限（デモ用）: `DEMO_MODE=1`, `DB_PATH`, `DATA_DIR`, `VITE_API_BASE`
+- 実CLIで使うときは APIキーのみを基本に（スーパーバイザーがコマンドを選択）
+  - `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`, `GOOGLE_API_KEY`/`GEMINI_API_KEY`
+  - これらはサブプロセス（各CLI）へ自動で引き継がれます
+- コマンド指定（現行スケルトンのまま使う場合のみ任意）
+  - `TOOL_CLAUDE_CODE_CMD/ARGS/USE_STDIN` 等で明示的にCLIを指定可能
+  - 将来は `tools.yml` 等のプロファイルに移し、`.env` はAPIキー中心にする予定（スーパーバイザーがタスク→コマンドを選択）
+
+注意: 実CLIをDocker内で動かす場合は、CLIバイナリを含むイメージを用意するか、Backendをネイティブ起動してください（現在のdevイメージには各CLIは含まれていません）。

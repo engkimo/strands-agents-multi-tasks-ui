@@ -16,5 +16,6 @@
 - `75_demo_run.md`: デモ実行手順（Docker/ネイティブ、APIサンプル）
 - `85_pr_coderabbit.md`: PRパッケージングとCodeRabbit評価（計画）
 - `60_wbs.md`: 実装タスク分解（WBS）
+ - `90_supervisor.md`: スーパーバイザーと tools.yml（推奨ツール選択）
 
 ドキュメントは会話に応じて更新します。未確定箇所は「要検討」「要ヒアリング」として残します。

@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { getRun, streamRun, createRun, packagePR } from '../api.js'
 import DiffView from '../components/DiffView.jsx'
-import Graph from '../components/Graph.jsx'
+import GraphFlow from '../components/GraphFlow.jsx'
 
 export default function RunDetail({ runId }) {
   const [run, setRun] = useState(null)
@@ -10,6 +10,7 @@ export default function RunDetail({ runId }) {
   const [rightTool, setRightTool] = useState('')
   const [actionMsg, setActionMsg] = useState('')
   const [prPreview, setPrPreview] = useState(null)
+  const [liveLogs, setLiveLogs] = useState({}) // {tool: string}
 
   async function refresh() {
     const data = await getRun(runId)
@@ -23,8 +24,16 @@ export default function RunDetail({ runId }) {
       .then(() => {
         es = streamRun(runId, (evt) => {
           if (evt.data) {
-            setRun(evt.data)
-            setStatus(evt.data.status)
+            if (evt.type === 'log') {
+              setLiveLogs((prev) => {
+                const t = evt.data.tool
+                const s = (prev[t] || '') + evt.data.text
+                return { ...prev, [t]: s }
+              })
+            } else {
+              setRun(evt.data)
+              setStatus(evt.data.status)
+            }
           }
         })
       })
@@ -92,7 +101,7 @@ export default function RunDetail({ runId }) {
       </div>
 
       <section style={{ marginTop: 16 }}>
-        <Graph run={run} />
+        <GraphFlow run={run} liveLogs={liveLogs} />
       </section>
 
       <section style={{ marginTop: 16 }}>

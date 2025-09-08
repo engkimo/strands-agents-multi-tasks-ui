@@ -1,0 +1,10 @@
+# Demo: codex_cli proposals for: 副業向けの新しい開発者ツールのアイデアを5つ
+
+- Generate code patches as unified diffs
+- Emphasize compilation + tests
+
+--- a/app.py
++++ b/app.py
+@@
+-print('hello')
++print('hello world')

@@ -26,7 +26,7 @@
 ```
 RUN=$(curl -s -X POST http://localhost:8000/runs \
   -H 'Content-Type: application/json' \
-  -d '{"prompt":"アイデアを5つ","tools":["claude_code","codex_cli","gemini_cli","spec_kit"]}')
+  -d '{"prompt":"アイデアを5つ","tools":["claude_code","codex_cli","gemini_cli"]}')
 RUN_ID=$(echo "$RUN" | sed -n 's/.*"id":"\([^"]*\)".*/\1/p')
 echo $RUN_ID
 ```
@@ -55,3 +55,4 @@ curl -s -X POST http://localhost:8000/runs/$RUN_ID/package_pr \
   -H 'Content-Type: application/json' \
   -d '{"tool":"claude_code","title":"Demo PR"}' | jq .
 ```
+- ワンクリックデモ: Runs画面の「デモ実行（3ツール一括）」で、既定プロンプト+3ツールで即時実行できます（DEMO_MODE=1 推奨）

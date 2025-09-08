@@ -1,10 +1,11 @@
 import React, { useEffect, useState } from 'react'
-import { listRuns, createRun, TOOL_OPTIONS } from '../api.js'
+import { listRuns, createRun, TOOL_OPTIONS, recommendTools } from '../api.js'
 
 export default function Runs() {
   const [runs, setRuns] = useState([])
   const [loading, setLoading] = useState(false)
-  const [prompt, setPrompt] = useState('副業向けの新しい開発者ツールのアイデアを5つ')
+  const DEMO_PROMPT = '副業向けの新しい開発者ツールのアイデアを5つ'
+  const [prompt, setPrompt] = useState(DEMO_PROMPT)
   const [tools, setTools] = useState(new Set(TOOL_OPTIONS))
   const [error, setError] = useState('')
 
@@ -43,8 +44,46 @@ export default function Runs() {
     }
   }
 
+  const onDemoRun = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const run = await createRun({ prompt: DEMO_PROMPT, tools: TOOL_OPTIONS })
+      window.location.hash = `#/runs/${run.id}`
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const onRecommend = async () => {
+    setLoading(true)
+    setError('')
+    try {
+      const resp = await recommendTools(prompt)
+      const set = new Set(resp.tools || [])
+      if (set.size > 0) setTools(set)
+    } catch (e) {
+      setError(String(e))
+    } finally {
+      setLoading(false)
+    }
+  }
+
   return (
     <div>
+      <section style={{ marginBottom: 12 }}>
+        <details>
+          <summary style={{ cursor: 'pointer' }}>使い方（チュートリアル）</summary>
+          <ol style={{ marginTop: 8 }}>
+            <li>ツールを選び、プロンプトを入力して「実行」。</li>
+            <li>Run詳細でグラフ（状態/時間）→ 各ノードのI/O/ログを確認。</li>
+            <li>差分ビューで2出力を比較（行/単語・空白/大小無視・Markdown）。</li>
+            <li>ベストを参考に「PRパッケージ作成（左を採用）」でsummary/review/patchを確認。</li>
+          </ol>
+        </details>
+      </section>
       <section style={{ marginBottom: 16 }}>
         <h2>新規実行</h2>
         <form onSubmit={onSubmit}>
@@ -59,8 +98,12 @@ export default function Runs() {
                 <input type="checkbox" checked={tools.has(t)} onChange={() => toggleTool(t)} /> {t}
               </label>
             ))}
+            <button type="button" disabled={loading} onClick={onRecommend} style={{ marginLeft: 8 }}>推奨ツール選択</button>
           </div>
-          <button type="submit" disabled={loading || tools.size === 0} style={{ marginTop: 8 }}>実行</button>
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button type="submit" disabled={loading || tools.size === 0}>実行</button>
+            <button type="button" disabled={loading} onClick={onDemoRun}>デモ実行（3ツール一括）</button>
+          </div>
           {error && <div style={{ color: 'crimson' }}>{error}</div>}
         </form>
       </section>
@@ -92,4 +135,3 @@ export default function Runs() {
     </div>
   )
 }
-
