@@ -1,4 +1,8 @@
 Strands Agents Multi‑Tasks UI
+
+<img width="1339" height="798" alt="image" src="https://github.com/user-attachments/assets/f823722a-258b-445b-85db-b558092da3b8" />
+
+
 =============================
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
