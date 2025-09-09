@@ -117,6 +117,7 @@ export default function Runs() {
               <th>ID</th>
               <th>状態</th>
               <th>作成時刻</th>
+              <th>ベスト</th>
               <th>ツール</th>
             </tr>
           </thead>
@@ -126,6 +127,7 @@ export default function Runs() {
                 <td><a href={`#/runs/${r.id}`}>{r.id.slice(0, 8)}…</a></td>
                 <td>{r.status}</td>
                 <td>{new Date(r.created_at).toLocaleString()}</td>
+                <td>{r.best_tool ? <span style={{ background:'#e0f2fe', padding:'2px 6px', borderRadius:4 }}>{r.best_tool}</span> : '-'}</td>
                 <td>{r.tools.join(', ')}</td>
               </tr>
             ))}

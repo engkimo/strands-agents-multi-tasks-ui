@@ -2,6 +2,16 @@
 
 最終更新: 2025-09-07
 
+## 要約（直近の到達点）
+- UI: React Flow によるグラフ表示、ノードホバー時にライブログ（SSE: log）/最終stdoutを下部にプレビュー
+- 実行: 並列（Best-of-N）+ 逐次保存、PRパッケージ（summary/review/patch）生成
+- 推奨: tools.yml + /recommend による推奨ツール選択（Runs画面から反映）
+- 評価: 軽量メトリクス拡張（vocab/TTR/平均行長/重複行率/キーワード包含率）をスコアに反映
+- ベスト: 自動選定 + 手動採用（/runs/{id}/adopt）、一覧にベストバッジ表示
+- プロファイル: tools.yml で stdin/arg_template/timeout/retries/max_output_bytes/deny を適用
+- テレメトリ: OpenTelemetry で run/tool span と log イベントを記録（OTLP or Console）
+- テスト: loader/evaluator/runner をunittestでスモーク
+
 ## 現在の実装スコープ（MVPスケルトン達成）
 - Backend（FastAPI）
   - エンドポイント: `GET /health`, `POST /runs`, `GET /runs`, `GET /runs/{id}`, `GET /stream/runs/{id}`（SSE: status/node/done）
@@ -57,22 +67,22 @@
 - 入力サニタイズ/安全装備の粒度向上（引数テンプレ/ホワイトリスト）
 - Windowsのパス/PTY差異検証
 
-## 次アクション（優先順）
+## 次アクション（優先順・最新版）
 1. ノード出力の逐次ストリーミング（実装済み・最初版）
    - Backend: `event: log` を追加、ランIDごとのキューでノードの行ログを配信
    - UI: Run詳細でライブログを受信し、React Flowのノードホバー時に下部パネルへ表示
-2. ベスト選択の保存と履歴（現状はベスト自動選定のみ。保存UIを追加）
-   - UI: 「採用」ボタン→Runにbest_ofフィールド保存、一覧でフィルタ/バッジ表示
-   - Backend/DB: runsに`best_tool`/`best_artifact`等を追加
-3. 簡易評価メトリクス（現状のヒューリスティックを拡張）
-   - 文字数/固有語彙数/キーワード包含率/重複率などの軽量指標を算出しUI表示
-   - MVP後にモデル採点やルーブリックへ拡張
-4. CLIテンプレ/プロファイル
-   - STDIN非対応CLIに対する引数テンプレ（`--prompt="{text}"` 等）をプロファイル化
-   - .env ではなく `tools.yml` 等で複数設定を切替
-5. OpenTelemetry 連携
-   - Run/NodeをSpanとして計測（tool, latency, exit_code属性）
-   - ローカルエクスポータ→将来Grafana/Langfuse等へ
+2. ベスト選択の保存と履歴（実装：初版）
+   - UI: 「この結果を採用」ボタンで `best_tool` を保存。Runs一覧にベストのバッジを表示
+   - Backend/DB: `POST /runs/{id}/adopt`（手動採用）で `runs.best_tool/best_score` を更新
+3. 評価メトリクス拡張（実装：初版）
+   - 文字数/行数/コード/差分/テストに加え、語彙規模（vocab）/TTR/平均行長/重複行率/キーワード包含率を算出
+   - スコアへ反映し、PRサマリにも値を出力。将来はUIで内訳可視化やモデル採点・ルーブリックへ拡張
+4. CLIテンプレ/プロファイル（拡張）
+   - 環境変数ホワイトリスト、作業ディレクトリ、並列度、deny強化（正規表現/ホワイトリスト）
+5. OpenTelemetry 連携（実装：初版）
+   - Run/NodeをSpanとして計測（tool/timeout/prompt.size/ok/exit_code/duration_ms/score）
+   - エクスポート: OTLP（`OTEL_EXPORTER_OTLP_ENDPOINT`）未設定時はConsole出力
+   - 将来: Grafana/Langfuse等への統合、メトリクス拡張（カウンタ/ヒストグラム）
 6. テスト/安定性
    - ユニット（runner/DB）+ E2E（echoモック）で基本動作をカバー
    - タイムアウト/キャンセル/失敗時の復帰を検証

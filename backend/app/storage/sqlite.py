@@ -141,7 +141,7 @@ class DB:
     def list_runs(self) -> List[Dict[str, Any]]:
         with self._lock:
             rows = self._conn.cursor().execute(
-                "SELECT id, prompt, tools_json, status, created_at, ended_at FROM runs ORDER BY datetime(created_at) DESC"
+                "SELECT id, prompt, tools_json, status, created_at, ended_at, best_tool, best_score FROM runs ORDER BY datetime(created_at) DESC"
             ).fetchall()
         items: List[Dict[str, Any]] = []
         for r in rows:
@@ -153,6 +153,24 @@ class DB:
                     "status": r["status"],
                     "created_at": r["created_at"],
                     "ended_at": r["ended_at"],
+                    "best_tool": r["best_tool"],
+                    "best_score": r["best_score"],
                 }
             )
         return items
+
+    def adopt_best_tool(self, run_id: str, tool: ToolName) -> bool:
+        with self._lock:
+            cur = self._conn.cursor()
+            node = cur.execute(
+                "SELECT score FROM nodes WHERE run_id=? AND tool=? ORDER BY id DESC LIMIT 1",
+                (run_id, tool.value),
+            ).fetchone()
+            if not node:
+                return False
+            score = node["score"] if "score" in node.keys() else node[0]
+            cur.execute(
+                "UPDATE runs SET best_tool=?, best_score=? WHERE id=?",
+                (tool.value, score, run_id),
+            )
+            return True

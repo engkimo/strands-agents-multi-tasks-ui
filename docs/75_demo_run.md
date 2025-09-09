@@ -49,6 +49,15 @@ curl -s http://localhost:8000/runs/$RUN_ID | jq .
 - 評価は簡易スコア（情報量/コード/差分/テスト語）
 
 参照: `docs/70_demo_playbook.md`, `docs/80_progress_next.md`
+
+## 7) テスト（任意）
+- ユニット/E2E（標準ライブラリunittest）
+  - 実行例（bash/fish 共通）:
+    - `PYTHONPATH=backend python -m unittest discover -v backend/tests`
+  - 目的:
+    - loader: 推奨・実行オプションの構築
+    - evaluator: 指標算出とスコア
+    - runner: denyブロックや出力トリムの挙動
  - PRパッケージ作成（左を採用する代わりに tool を明示）
 ```
 curl -s -X POST http://localhost:8000/runs/$RUN_ID/package_pr \

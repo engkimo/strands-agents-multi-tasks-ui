@@ -44,18 +44,42 @@ async def run_external_tool(
     prompt: str,
     timeout_seconds: int = 120,
     on_log: callable | None = None,  # async(kind:str, text:str)
+    override_args: list[str] | None = None,
+    override_use_stdin: bool | None = None,
+    max_output_bytes: Optional[int] = None,
+    deny: Optional[List[str]] = None,
+    env: Optional[dict] = None,
+    cwd: Optional[str] = None,
 ) -> NodeResult:
     cmd = _resolve_command(tool)
-    args = _resolve_args(tool)
-    use_stdin = _use_stdin(tool)
+    args = override_args if override_args is not None else _resolve_args(tool)
+    use_stdin = (override_use_stdin if override_use_stdin is not None else _use_stdin(tool))
+
+    # safety: deny simple patterns in command line
+    if deny:
+        line = (" ".join(cmd + args)).lower()
+        for bad in deny:
+            if bad and bad in line:
+                return NodeResult(
+                    tool=tool,
+                    ok=False,
+                    stdout=None,
+                    stderr=f"blocked by safety denylist: '{bad}'\n",
+                    exit_code=None,
+                    duration_ms=0,
+                )
 
     start = time.perf_counter()
     try:
+        opts_env = env if env is not None else None
+        opts_cwd = cwd if cwd is not None else None
         proc = await asyncio.create_subprocess_exec(
             *(cmd + args),
             stdin=asyncio.subprocess.PIPE if use_stdin else None,
             stdout=asyncio.subprocess.PIPE,
             stderr=asyncio.subprocess.PIPE,
+            env=opts_env,
+            cwd=opts_cwd,
         )
 
         # write stdin if needed
@@ -70,11 +94,27 @@ async def run_external_tool(
         err_buf: list[str] = []
 
         async def _pump(reader: asyncio.StreamReader, kind: str, buf: list[str]):
+            current_bytes = 0
             while True:
                 line = await reader.readline()
                 if not line:
                     break
                 text = line.decode("utf-8", errors="replace")
+                # enforce approximate output cap
+                if max_output_bytes:
+                    if current_bytes >= max_output_bytes:
+                        # drop additional logs
+                        continue
+                    # approximate byte count (utf-8)
+                    b = len(text.encode("utf-8", errors="ignore"))
+                    if current_bytes + b > max_output_bytes:
+                        # cut and mark truncation
+                        remain = max(0, max_output_bytes - current_bytes)
+                        cut = text.encode("utf-8", errors="ignore")[:remain].decode("utf-8", errors="ignore")
+                        text = cut + "\n[truncated]\n"
+                        current_bytes = max_output_bytes
+                    else:
+                        current_bytes += b
                 buf.append(text)
                 if on_log is not None:
                     try:

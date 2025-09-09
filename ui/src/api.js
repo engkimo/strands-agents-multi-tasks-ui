@@ -85,3 +85,13 @@ export async function recommendTools(prompt) {
   if (!res.ok) throw new Error('failed to recommend tools')
   return await res.json()
 }
+
+export async function adoptBest(id, tool) {
+  const res = await fetch(`${API_BASE}/runs/${id}/adopt`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ tool }),
+  })
+  if (!res.ok) throw new Error('failed to adopt best tool')
+  return await res.json()
+}

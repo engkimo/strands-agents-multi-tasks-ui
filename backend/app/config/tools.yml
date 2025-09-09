@@ -1,13 +1,43 @@
 tools:
   claude_code:
     env_keys: [ANTHROPIC_API_KEY]
+    env_allow: [PATH]
+    env_add: {}
     stdin: true
+    arg_template: ""
+    limits:
+      timeout_seconds: 120
+      retries: 0
+      max_output_bytes: 200000
+    safety:
+      deny: ["rm -rf", "shutdown", "reboot", "mkfs", ":(){:|:&};:"]
+    cwd: null
   codex_cli:
     env_keys: [OPENAI_API_KEY]
+    env_allow: [PATH]
+    env_add: {}
     stdin: true
+    arg_template: ""
+    limits:
+      timeout_seconds: 120
+      retries: 0
+      max_output_bytes: 200000
+    safety:
+      deny: ["rm -rf", "shutdown", "reboot"]
+    cwd: null
   gemini_cli:
     env_keys: [GEMINI_API_KEY, GOOGLE_API_KEY]
+    env_allow: [PATH]
+    env_add: {}
     stdin: true
+    arg_template: ""
+    limits:
+      timeout_seconds: 120
+      retries: 0
+      max_output_bytes: 200000
+    safety:
+      deny: ["rm -rf", "shutdown", "reboot"]
+    cwd: null
 
 selectors:
   - name: code_refactor
@@ -22,4 +52,4 @@ selectors:
 
 default:
   recommend: ["claude_code", "codex_cli", "gemini_cli"]
-
+  concurrency: 0  # 0 means no limit (run all in parallel)

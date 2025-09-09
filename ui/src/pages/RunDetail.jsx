@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { getRun, streamRun, createRun, packagePR } from '../api.js'
+import { getRun, streamRun, createRun, packagePR, adoptBest } from '../api.js'
 import DiffView from '../components/DiffView.jsx'
 import GraphFlow from '../components/GraphFlow.jsx'
 
@@ -134,6 +134,23 @@ export default function RunDetail({ runId }) {
                       }
                     }}
                   >このツールだけ再実行</button>
+                  <button
+                    style={{ marginLeft: 8 }}
+                    disabled={status === 'running'}
+                    onClick={async () => {
+                      setActionMsg('採用中…')
+                      try {
+                        const updated = await adoptBest(run.id, res.tool)
+                        setRun(updated)
+                        setStatus(updated.status)
+                        setActionMsg('採用しました')
+                      } catch (e) {
+                        setActionMsg(String(e))
+                      } finally {
+                        setTimeout(() => setActionMsg(''), 1500)
+                      }
+                    }}
+                  >この結果を採用</button>
                 </div>
               </details>
             ))}

@@ -16,7 +16,9 @@ from ..storage.sqlite import DB
 from ..storage.files import ensure_base_dir, pr_dir, write_text, node_dir, read_text_or_none
 from ..eval.simple import evaluate_text
 from pydantic import BaseModel
-from ..config.loader import load_tools_config, recommend_tools as _recommend_tools
+from ..config.loader import load_tools_config, recommend_tools as _recommend_tools, build_tool_options, get_max_concurrency
+from ..telemetry.otel import setup_otel
+from opentelemetry import trace
 
 
 app = FastAPI(title="Strands Agents Multi-Tasks Backend", version="0.1.0")
@@ -35,6 +37,7 @@ async def _startup():
     app.state.db = DB()
     app.state.tools_cfg = load_tools_config()
     app.state.log_queues: Dict[str, asyncio.Queue] = {}
+    setup_otel()
 
 
 @app.get("/health")
@@ -55,23 +58,33 @@ async def create_run(req: RunCreate):
     # ensure a log queue for this run
     app.state.log_queues[run_id] = asyncio.Queue()
 
+    tracer = trace.get_tracer("api.server")
+
     async def _worker():
         db.update_run_status(run_id, RunStatus.running)
-        try:
-            async for res in iter_best_of_n(
-                req.prompt,
-                req.tools,
-                timeout_seconds=(req.timeout_seconds or 120),
-                on_log=_make_log_cb(run_id),
-            ):
-                # 簡易評価
-                metrics = evaluate_text(res.stdout)
-                res.score = metrics.get("score", 0.0)
-                db.insert_node_result(run_id, res)
-            db.update_run_status(run_id, RunStatus.completed, ended_at=datetime.utcnow())
-            db.update_run_best(run_id)
-        except Exception:
-            db.update_run_status(run_id, RunStatus.failed, ended_at=datetime.utcnow())
+        with tracer.start_as_current_span("run", attributes={
+            "run.id": run_id,
+            "run.tools": ",".join([t.value for t in req.tools]),
+        }):
+            try:
+                tool_opts = build_tool_options(req.prompt, [t.value for t in req.tools], app.state.tools_cfg)
+                tool_options_map = {ToolName(k): v for k, v in tool_opts.items()}
+                maxc = get_max_concurrency(app.state.tools_cfg)
+                async for res in iter_best_of_n(
+                    req.prompt,
+                    req.tools,
+                    timeout_seconds=(req.timeout_seconds or 120),
+                    on_log=_make_log_cb(run_id),
+                    tool_options=tool_options_map,
+                    max_concurrency=maxc,
+                ):
+                    metrics = evaluate_text(res.stdout, prompt=req.prompt)
+                    res.score = metrics.get("score", 0.0)
+                    db.insert_node_result(run_id, res)
+                db.update_run_status(run_id, RunStatus.completed, ended_at=datetime.utcnow())
+                db.update_run_best(run_id)
+            except Exception:
+                db.update_run_status(run_id, RunStatus.failed, ended_at=datetime.utcnow())
 
     asyncio.create_task(_worker())
     return run
@@ -162,7 +175,7 @@ async def package_pr(run_id: str, req: PackageRequest):
         raise HTTPException(status_code=400, detail="selected tool result not found")
     # 最終的な出力はファイルを優先（DBに内容未格納でも復元可能）
     content = res.stdout or read_text_or_none(str(node_dir(run_id, tool.value) / "stdout.txt")) or ""
-    metrics = evaluate_text(content)
+    metrics = evaluate_text(content, prompt=run.prompt)
     title = req.title or f"Proposal from {tool.value}"
     # Build files
     summary_md = (
@@ -200,6 +213,8 @@ async def package_pr(run_id: str, req: PackageRequest):
 ## Heuristics
 
 - lines: {metrics.get('lines')}  chars: {metrics.get('chars')}  code_blocks: {metrics.get('code_blocks')}  diff_hunks: {metrics.get('diff_hunks')}  tests: {metrics.get('tests')}
+- vocab: {metrics.get('vocab')}  ttr: {metrics.get('ttr')}  avg_line_len: {metrics.get('avg_line_len')}
+- keyword_hits: {metrics.get('keyword_hits')}  keyword_cover: {metrics.get('keyword_cover')}  dup_lines: {metrics.get('dup_lines')}
 """
 
     out = pr_dir(run_id)
@@ -255,3 +270,19 @@ async def post_recommend(req: RecommendRequest):
 @app.get("/config/tools")
 async def get_tools_config():
     return app.state.tools_cfg
+
+
+class AdoptRequest(BaseModel):
+    tool: ToolName
+
+
+@app.post("/runs/{run_id}/adopt", response_model=Run)
+async def adopt_best(run_id: str, req: AdoptRequest):
+    db: DB = app.state.db
+    run = db.get_run(run_id)
+    if not run:
+        raise HTTPException(status_code=404, detail="run not found")
+    ok = db.adopt_best_tool(run_id, req.tool)
+    if not ok:
+        raise HTTPException(status_code=400, detail="node result for tool not found")
+    return db.get_run(run_id)
