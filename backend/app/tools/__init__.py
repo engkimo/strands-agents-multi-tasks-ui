@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import asyncio
 from ..models import ToolName, NodeResult
 from .runner import run_external_tool
 from .demo import simulate_tool

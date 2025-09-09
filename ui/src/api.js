@@ -64,6 +64,7 @@ export const TOOL_OPTIONS = [
   'claude_code',
   'codex_cli',
   'gemini_cli',
+  'spec_kit',
 ]
 
 export async function packagePR(id, { tool, title } = {}) {
@@ -93,5 +94,11 @@ export async function adoptBest(id, tool) {
     body: JSON.stringify({ tool }),
   })
   if (!res.ok) throw new Error('failed to adopt best tool')
+  return await res.json()
+}
+
+export async function getMetricsSummary() {
+  const res = await fetch(`${API_BASE}/metrics/summary`)
+  if (!res.ok) throw new Error('failed to fetch metrics')
   return await res.json()
 }

@@ -286,3 +286,9 @@ async def adopt_best(run_id: str, req: AdoptRequest):
     if not ok:
         raise HTTPException(status_code=400, detail="node result for tool not found")
     return db.get_run(run_id)
+
+
+@app.get("/metrics/summary")
+async def metrics_summary():
+    db: DB = app.state.db
+    return db.metrics_summary()

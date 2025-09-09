@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react'
-import { listRuns, createRun, TOOL_OPTIONS, recommendTools } from '../api.js'
+import { listRuns, createRun, TOOL_OPTIONS, recommendTools, getMetricsSummary } from '../api.js'
 
 export default function Runs() {
   const [runs, setRuns] = useState([])
@@ -8,11 +8,14 @@ export default function Runs() {
   const [prompt, setPrompt] = useState(DEMO_PROMPT)
   const [tools, setTools] = useState(new Set(TOOL_OPTIONS))
   const [error, setError] = useState('')
+  const [metrics, setMetrics] = useState(null)
 
   async function refresh() {
     try {
       const data = await listRuns()
       setRuns(data)
+      const m = await getMetricsSummary()
+      setMetrics(m)
     } catch (e) {
       setError(String(e))
     }
@@ -73,6 +76,26 @@ export default function Runs() {
 
   return (
     <div>
+      {metrics && (
+        <section style={{ marginBottom: 12, display: 'flex', gap: 12, flexWrap: 'wrap' }}>
+          <div style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }}>
+            <div style={{ fontSize: 12, color: '#6b7280' }}>総Runs</div>
+            <div style={{ fontSize: 18, fontWeight: 600 }}>{metrics.total_runs}</div>
+          </div>
+          <div style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }}>
+            <div style={{ fontSize: 12, color: '#6b7280' }}>ノード成功率</div>
+            <div style={{ fontSize: 18, fontWeight: 600 }}>
+              {metrics.total_nodes > 0 ? `${Math.round((metrics.ok_nodes / metrics.total_nodes) * 100)}%` : '-'}
+            </div>
+          </div>
+          <div style={{ padding: 8, border: '1px solid #e5e7eb', borderRadius: 6 }}>
+            <div style={{ fontSize: 12, color: '#6b7280' }}>平均時間(OK)</div>
+            <div style={{ fontSize: 18, fontWeight: 600 }}>
+              {metrics.avg_duration_ms_ok != null ? `${Math.round(metrics.avg_duration_ms_ok)}ms` : '-'}
+            </div>
+          </div>
+        </section>
+      )}
       <section style={{ marginBottom: 12 }}>
         <details>
           <summary style={{ cursor: 'pointer' }}>使い方（チュートリアル）</summary>

@@ -174,3 +174,62 @@ class DB:
                 (tool.value, score, run_id),
             )
             return True
+
+    def metrics_summary(self) -> Dict[str, Any]:
+        """Return lightweight aggregate metrics for dashboard cards.
+
+        Includes overall counts and per-tool aggregates.
+        """
+        with self._lock:
+            cur = self._conn.cursor()
+            total_runs = cur.execute("SELECT COUNT(*) AS c FROM runs").fetchone()[0]
+            row_nodes = cur.execute(
+                "SELECT COUNT(*) AS c, SUM(ok) AS ok FROM nodes"
+            ).fetchone()
+            total_nodes = row_nodes["c"] if "c" in row_nodes.keys() else row_nodes[0]
+            ok_nodes = row_nodes["ok"] if "ok" in row_nodes.keys() else row_nodes[1]
+            ok_nodes = int(ok_nodes or 0)
+            fail_nodes = int((total_nodes or 0) - ok_nodes)
+            row_avg_all = cur.execute(
+                "SELECT AVG(duration_ms) AS a FROM nodes WHERE duration_ms IS NOT NULL"
+            ).fetchone()
+            avg_duration_ms_all = row_avg_all["a"] if "a" in row_avg_all.keys() else row_avg_all[0]
+            row_avg_ok = cur.execute(
+                "SELECT AVG(duration_ms) AS a FROM nodes WHERE ok=1 AND duration_ms IS NOT NULL"
+            ).fetchone()
+            avg_duration_ms_ok = row_avg_ok["a"] if "a" in row_avg_ok.keys() else row_avg_ok[0]
+
+            per_tool: Dict[str, Any] = {}
+            for r in cur.execute(
+                """
+                SELECT tool,
+                       COUNT(*) AS cnt,
+                       SUM(ok) AS ok_cnt,
+                       AVG(duration_ms) AS avg_ms,
+                       AVG(score) AS avg_score
+                  FROM nodes
+                 GROUP BY tool
+                """
+            ).fetchall():
+                tool = r["tool"] if "tool" in r.keys() else r[0]
+                cnt = r["cnt"] if "cnt" in r.keys() else r[1]
+                ok_cnt = r["ok_cnt"] if "ok_cnt" in r.keys() else r[2]
+                avg_ms = r["avg_ms"] if "avg_ms" in r.keys() else r[3]
+                avg_score = r["avg_score"] if "avg_score" in r.keys() else r[4]
+                per_tool[tool] = {
+                    "count": int(cnt or 0),
+                    "ok": int(ok_cnt or 0),
+                    "fail": int((cnt or 0) - (ok_cnt or 0)),
+                    "avg_duration_ms": float(avg_ms) if avg_ms is not None else None,
+                    "avg_score": float(avg_score) if avg_score is not None else None,
+                }
+
+        return {
+            "total_runs": int(total_runs or 0),
+            "total_nodes": int(total_nodes or 0),
+            "ok_nodes": ok_nodes,
+            "fail_nodes": fail_nodes,
+            "avg_duration_ms": float(avg_duration_ms_all) if avg_duration_ms_all is not None else None,
+            "avg_duration_ms_ok": float(avg_duration_ms_ok) if avg_duration_ms_ok is not None else None,
+            "per_tool": per_tool,
+        }

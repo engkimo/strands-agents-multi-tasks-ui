@@ -1,6 +1,6 @@
 # 進捗まとめ（現在地）と次アクション
 
-最終更新: 2025-09-07
+最終更新: 2025-09-09
 
 ## 要約（直近の到達点）
 - UI: React Flow によるグラフ表示、ノードホバー時にライブログ（SSE: log）/最終stdoutを下部にプレビュー
@@ -11,6 +11,14 @@
 - プロファイル: tools.yml で stdin/arg_template/timeout/retries/max_output_bytes/deny を適用
 - テレメトリ: OpenTelemetry で run/tool span と log イベントを記録（OTLP or Console）
 - テスト: loader/evaluator/runner をunittestでスモーク
+- メトリクス: `GET /metrics/summary` を追加、Runs 画面にダッシュボードカード（総Runs/成功率/平均時間）を表示
+- エラーバッジ: Run詳細で timeout / not found / 非ゼロ終了 などの種別を表示
+- ツール: UI のツール選択肢に `spec_kit` を追加（環境未設定時は echo フォールバック）
+
+### 変更履歴（直近の差分）
+- Backend: `backend/app/tools/__init__.py` に `import asyncio` 追加（リトライのバックオフ修正）
+- Backend: `DB.metrics_summary()` を実装し `GET /metrics/summary` を追加
+- UI: Runs にメトリクスカード、Run詳細にエラー種別バッジ、`spec_kit` を選択肢に追加
 
 ## 現在の実装スコープ（MVPスケルトン達成）
 - Backend（FastAPI）
@@ -40,6 +48,9 @@
   - 一覧/詳細（詳細は nodes 結果を含む）
 - `GET /stream/runs/{id}`（SSE）
   - `status`/`node`/`done` イベントで `Run` のJSONを配信（nodeは結果数の増加で送信）
+  - 逐次ログ（`log` イベント）をツール別に配信
+ - `GET /metrics/summary`（集計）
+  - 総Runs/ノード総数/成功数・失敗数/平均時間（全体・OK）/ツール別集計
 
 ## 設定（環境変数）
 - DB/保存先: `DB_PATH=var/data/app.db`, `DATA_DIR=var/data`
@@ -60,11 +71,10 @@
   - UI: `cd ui && npm install && npm run dev`
 
 ## 既知の制約/未実装
-- ノードのSTDOUT逐次ストリーム（現状は完了単位）
+- 逐次ログのUX: 長大ログの整形/検索/フィルタは未実装（初版）
 - DiffのN-way比較（現状は任意2出力の比較）
-- 評価指標/スコアリング（順位付け、ベスト自動選択）
-- OTelのSpan/Metric連携は骨組み未実装（TODO）
-- 入力サニタイズ/安全装備の粒度向上（引数テンプレ/ホワイトリスト）
+- OTel メトリクス（カウンタ/ヒストグラム）と外部ダッシュボード連携は最小限
+- 入力サニタイズ/安全装備の粒度向上（正規表現deny/ホワイトリスト強化）
 - Windowsのパス/PTY差異検証
 
 ## 次アクション（優先順・最新版）
@@ -95,3 +105,21 @@
 ---
 - 参照: `docs/10_prd.md`, `docs/40_mvp.md`, `docs/70_demo_playbook.md`
 - 競合対比: Difyに対し「CLI横断・並列比較・透明なI/O/コスト可視化」を強調
+ 
+## 次アクション（更新 2025-09-09）
+1. メトリクス拡張（UI/集計）
+   - Runs にツール別ブレークダウン（成功率/平均時間/平均スコア）を追加表示
+   - `/metrics/summary` に期間フィルタ/ツール指定などの引数を拡張
+2. グラフノードのエラーバッジ
+   - GraphFlow 上のツールノードに timeout/exit コードなどのバッジを表示
+3. トークン/コストの可視化
+   - CLI から取得可能なメタのパース/概算計測と UI への表示
+4. Graph/Swarm の拡張土台
+   - 条件分岐/ループ/共有コンテキストの設計と可視化（MVP後の拡張）
+5. セキュリティ強化
+   - deny の正規表現化/ホワイトリスト、プロセス分離（将来的に container/sandbox）
+6. テスト/安定性
+   - `pip install -r backend/requirements.txt` 後、unittest/E2E を拡充
+   - 長時間実行/ログ肥大/部分失敗の復帰シナリオ検証
+7. Windows検証
+   - パス/プロセス/改行差異を確認しREADMEに注意書き

@@ -111,7 +111,9 @@ export default function RunDetail({ runId }) {
             {run.results.map((res) => (
               <details key={res.tool} style={{ marginBottom: 8 }} open>
                 <summary>
-                  <b>{res.tool}</b> — {res.ok ? 'OK' : 'NG'} — exit:{res.exit_code ?? '-'} — {res.duration_ms ?? '-'}ms {res.score != null ? `— score ${res.score}` : ''}
+                  <b>{res.tool}</b>{' '}
+                  <StatusLabel res={res} />{' '}
+                  — {res.duration_ms ?? '-'}ms {res.score != null ? `— score ${res.score}` : ''}
                 </summary>
                 <div style={{ display: 'flex', gap: 8 }}>
                   <pre style={{ flex: 1, background: res.ok ? '#f7f7f7' : '#fff5f5', padding: 8, overflowX: 'auto' }}>{res.stdout || ''}</pre>
@@ -224,4 +226,25 @@ export default function RunDetail({ runId }) {
       </section>
     </div>
   )
+}
+
+function StatusLabel({ res }) {
+  const txt = classify(res)
+  const style = (() => {
+    if (res.ok) return { background: '#dcfce7', color: '#166534' }
+    if (txt.includes('timeout')) return { background: '#fff7ed', color: '#9a3412' }
+    return { background: '#fee2e2', color: '#991b1b' }
+  })()
+  return (
+    <span style={{ padding: '2px 6px', borderRadius: 4, fontSize: 12, ...style }}>{txt}</span>
+  )
+}
+
+function classify(res) {
+  if (res.ok) return 'OK'
+  const stderr = (res.stderr || '').toLowerCase()
+  if (stderr.includes('timeout')) return 'NG (timeout)'
+  if (stderr.includes('command not found') || stderr.includes('not found')) return 'NG (not found)'
+  if (res.exit_code != null) return `NG (exit ${res.exit_code})`
+  return 'NG (error)'
 }

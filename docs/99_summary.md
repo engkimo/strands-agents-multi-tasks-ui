@@ -10,6 +10,8 @@
   - デモ実行（3ツール一括）ボタン、簡易チュートリアル表示
   - 推奨ツール選択ボタン（/recommend の結果を反映）
   - ベスト採用ボタン（この結果を採用 → `best_tool` 保存）＋一覧にバッジ表示
+  - Runsページにメトリクスカード（総Runs/ノード成功率/平均時間）
+  - エラー種別バッジ（timeout/not found/exit code など）
 - 実行/バックエンド
   - 並列実行（Best-of-N）＋逐次保存（完了順）
   - 逐次ログ配信（SSE `log`）/ ステータス（`status`/`node`/`done`）
@@ -37,6 +39,7 @@
 - `POST /runs/{id}/package_pr`（PRパッケージ生成）
 - `POST /runs/{id}/adopt`（ベスト採用）
 - `POST /recommend`（推奨ツール）、`GET /config/tools`（tools.yml 内容）
+ - `GET /metrics/summary`（集計: 総Runs/ノード数/成功・失敗/平均時間、ツール別集計）
 
 ## tools.yml（要点）
 - ツール別設定
