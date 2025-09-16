@@ -40,6 +40,11 @@ def write_artifacts(run_id: str, tool: str, stdout: str | None, stderr: str | No
 def read_text_or_none(path: str | None) -> str | None:
     if not path:
         return None
+    try:
+        with open(path, "r", encoding="utf-8") as f:
+            return f.read()
+    except FileNotFoundError:
+        return None
 
 
 def pr_dir(run_id: str) -> Path:
@@ -53,8 +58,3 @@ def write_text(path: Path, content: str) -> str:
     with open(path, "w", encoding="utf-8") as f:
         f.write(content)
     return str(path)
-    try:
-        with open(path, "r", encoding="utf-8") as f:
-            return f.read()
-    except FileNotFoundError:
-        return None
