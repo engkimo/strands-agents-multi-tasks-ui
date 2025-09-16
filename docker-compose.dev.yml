@@ -21,7 +21,7 @@ services:
       dockerfile: ui/Dockerfile
     env_file: .env
     environment:
-      - VITE_API_BASE=${VITE_API_BASE:-http://localhost:8000}
+      - VITE_API_BASE=${VITE_API_BASE:-/api}
     volumes:
       - ./ui:/app
       - /app/node_modules
@@ -29,4 +29,3 @@ services:
       - "5173:5173"
     depends_on:
       - backend
-

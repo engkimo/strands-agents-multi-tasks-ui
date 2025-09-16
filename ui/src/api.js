@@ -1,4 +1,4 @@
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000'
+const API_BASE = import.meta.env.VITE_API_BASE || '/api'
 
 export async function listRuns() {
   const res = await fetch(`${API_BASE}/runs`)
